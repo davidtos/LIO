@@ -13,32 +13,15 @@ public class FuseMain {
 
     static List<String> directories = new ArrayList<>();
     static List<String> files = new ArrayList<>();
-    static Map<String, String> filesContent = new HashMap<>();  // move to off heap
-
-
-    static boolean isDir(String path) {
-        return directories.contains(path);
-    }
-
-    static void addFile(String filename) {
-        files.add(filename);
-        filesContent.put(filename,"");
-    }
-
-    static boolean isFile(String path) {
-        return files.contains(path);
-    }
-
-    static Arena rsScope = null;  //  TODO: check if this can be removed
+    static Map<String, String> filesContent = new HashMap<>();
+    static Arena fuseScope = null;
 
     public static void main(String[] args) {
-        System.load("/lib/x86_64-linux-gnu/libfuse3.so.3");
-
         args = new String[]{"-f", "-d", "/home/david/test/"};
 
         try (var arena = Arena.ofShared()) {
             MemorySegment pointers = arena.allocate(ValueLayout.ADDRESS, args.length);
-            rsScope = arena;
+            fuseScope = arena;
 
             for (int i = 0; i < args.length; i++) {
                 MemorySegment cString = arena.allocateFrom(args[i]);
@@ -59,6 +42,19 @@ public class FuseMain {
         }
     }
 
+    static boolean isDir(String path) {
+        return directories.contains(path);
+    }
+
+    static void addFile(String filename) {
+        files.add(filename);
+        filesContent.put(filename,"");
+    }
+
+    static boolean isFile(String path) {
+        return files.contains(path);
+    }
+
     public static int getAttr(MemorySegment path, MemorySegment statMemorySegment, MemorySegment fi) {
         String jPath = path.getString(0);
 
@@ -72,7 +68,7 @@ public class FuseMain {
 
         // setting the stat mtim (last modify time)
         now = Instant.now();
-        timespec.tv_sec(stat.st_mtim(statMemorySegment), now.getEpochSecond()); // TODO: varhandles inside a varhandle
+        timespec.tv_sec(stat.st_mtim(statMemorySegment), now.getEpochSecond());
         timespec.tv_nsec(stat.st_mtim(statMemorySegment), now.getNano());
 
         stat.st_uid(statMemorySegment, 1000);
@@ -95,18 +91,18 @@ public class FuseMain {
 
     public static int readDir(MemorySegment path, MemorySegment buffer, MemorySegment filler, long offset, MemorySegment fileInfo, int flags) {
 
-        fuse_fill_dir_t.invoke(filler,buffer, rsScope.allocateFrom("."), MemorySegment.NULL, 0, 0);
-        fuse_fill_dir_t.invoke(filler,buffer, rsScope.allocateFrom(".."), MemorySegment.NULL, 0, 0);
+        fuse_fill_dir_t.invoke(filler,buffer, fuseScope.allocateFrom("."), MemorySegment.NULL, 0, 0);
+        fuse_fill_dir_t.invoke(filler,buffer, fuseScope.allocateFrom(".."), MemorySegment.NULL, 0, 0);
 
         String jPath = path.getString(0);
 
         if ("/".equals(jPath)) {
             for (String p : directories) {
-                fuse_fill_dir_t.invoke(filler,buffer, rsScope.allocateFrom(p), MemorySegment.NULL, 0, 0);
+                fuse_fill_dir_t.invoke(filler,buffer, fuseScope.allocateFrom(p), MemorySegment.NULL, 0, 0);
             }
 
             for (String p : files) {
-                fuse_fill_dir_t.invoke(filler,buffer, rsScope.allocateFrom(p), MemorySegment.NULL, 0, 0);
+                fuse_fill_dir_t.invoke(filler,buffer, fuseScope.allocateFrom(p), MemorySegment.NULL, 0, 0);
             }
         }
 

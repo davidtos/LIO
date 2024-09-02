@@ -53,8 +53,7 @@ public class fuse_h {
         };
     }
 
-    static final SymbolLookup SYMBOL_LOOKUP = SymbolLookup.loaderLookup()
-            .or(Linker.nativeLinker().defaultLookup());
+    static final SymbolLookup SYMBOL_LOOKUP = SymbolLookup.libraryLookup("/lib/x86_64-linux-gnu/libfuse3.so.3",LIBRARY_ARENA).or(Linker.nativeLinker().defaultLookup());
 
     public static final OfBoolean C_BOOL = ValueLayout.JAVA_BOOLEAN;
     public static final OfByte C_CHAR = ValueLayout.JAVA_BYTE;
