@@ -11,10 +11,10 @@ import static java.lang.foreign.ValueLayout.*;
 public class IoUringReadExample {
 
     static int QD = 4;
+    static String path = "./tmp_file";
 
     public static void main(String[] args) throws Throwable {
         int fd, ret;
-        String path = "./tmp_file";
         int fileSize = (int) new File(path).length();
 
         try (var arena = Arena.ofConfined()) {
@@ -97,6 +97,14 @@ public class IoUringReadExample {
 
             // close the resources used for this ring
             liburingtest.io_uring_queue_exit(ring);
+
+            // close the file
+            MethodHandle close = linker.downcallHandle(
+                    defaultLookup.find("close").get(),
+                    FunctionDescriptor.ofVoid(JAVA_INT)
+            );
+
+            close.invoke(fd);
 
         }
 

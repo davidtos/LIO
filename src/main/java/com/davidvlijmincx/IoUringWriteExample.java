@@ -13,14 +13,14 @@ public class IoUringWriteExample {
 
     static int QD = 4;
     static String path = "./tmp_file";
-    static String content = "Hello io_uring!";
+    static String content = "Hello, io_uring!";
 
     public static void main(String[] args) throws Throwable {
         int fd, ret;
 
         try (var arena = Arena.ofConfined()) {
             final var linker = Linker.nativeLinker();
-            final var cStdLib = linker.defaultLookup();
+            final var defaultLookup = linker.defaultLookup();
 
             // Init ring
             MemorySegment ring = arena.allocate(io_uring.layout());
@@ -33,7 +33,7 @@ public class IoUringWriteExample {
 
             // open file
             MethodHandle open = linker.downcallHandle(
-                    cStdLib.find("open").orElseThrow(),
+                    defaultLookup.find("open").orElseThrow(),
                     FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_INT, JAVA_INT)
             );
 
@@ -96,7 +96,7 @@ public class IoUringWriteExample {
 
             // close the file
             MethodHandle close = linker.downcallHandle(
-                    cStdLib.find("close").get(),
+                    defaultLookup.find("close").get(),
                     FunctionDescriptor.ofVoid(JAVA_INT)
             );
 
