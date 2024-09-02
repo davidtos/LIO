@@ -11622,6 +11622,17 @@ public class liburingtest_1 extends liburingtest_2 {
         public static final MethodHandle HANDLE = Linker.nativeLinker().downcallHandle(ADDR, DESC);
     }
 
+    private static class io_uring_sqe_set_data_long {
+        public static final FunctionDescriptor DESC = FunctionDescriptor.ofVoid(
+                liburingtest.C_POINTER,
+                liburingtest.C_LONG
+        );
+
+        public static final MemorySegment ADDR = liburingtest.findOrThrow("io_uring_sqe_set_data");
+
+        public static final MethodHandle HANDLE = Linker.nativeLinker().downcallHandle(ADDR, DESC);
+    }
+
     /**
      * Function descriptor for:
      * {@snippet lang=c :
@@ -11666,6 +11677,18 @@ public class liburingtest_1 extends liburingtest_2 {
             mh$.invokeExact(sqe, data);
         } catch (Throwable ex$) {
            throw new AssertionError("should not reach here", ex$);
+        }
+    }
+
+    public static void io_uring_sqe_set_data_long(MemorySegment sqe, Long data) {
+        var mh$ = io_uring_sqe_set_data_long.HANDLE;
+        try {
+            if (TRACE_DOWNCALLS) {
+                traceDowncall("io_uring_sqe_set_data", sqe, data);
+            }
+            mh$.invoke(sqe, data);
+        } catch (Throwable ex$) {
+            throw new AssertionError("should not reach here", ex$);
         }
     }
 

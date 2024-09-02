@@ -63,8 +63,7 @@ public class IoUringWriteExample {
             }
 
             // The content to write to the file
-            Random r = new Random();
-            String content = "Hello io_uring! and Hello FS! " + r.nextInt();
+            String content = "Hello io_uring! from home";
             MemorySegment mem = bufPtr.reinterpret(size);
             mem.setString(0, content);
 

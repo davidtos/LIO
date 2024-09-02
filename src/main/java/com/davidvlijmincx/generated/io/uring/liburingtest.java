@@ -4,7 +4,7 @@ package com.davidvlijmincx.generated.io.uring;
 
 public class liburingtest extends liburingtest_1 {
 
-    liburingtest() {
+    public liburingtest() {
         // Should not be called directly
     }
     private static final long FS_IOC32_SETVERSION = 1074034178L;
