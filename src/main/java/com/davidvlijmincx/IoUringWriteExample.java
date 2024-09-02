@@ -6,13 +6,14 @@ import com.davidvlijmincx.generated.io.uring.io_uring_cqe;
 
 import java.lang.foreign.*;
 import java.lang.invoke.MethodHandle;
-import java.util.Random;
 
 import static java.lang.foreign.ValueLayout.*;
 
 public class IoUringWriteExample {
 
     static int QD = 4;
+    static String path = "./tmp_file";
+    static String content = "Hello io_uring!";
 
     public static void main(String[] args) throws Throwable {
         int fd, ret;
@@ -36,7 +37,6 @@ public class IoUringWriteExample {
                     FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_INT, JAVA_INT)
             );
 
-            String path = "./tmp_file";
             int flags = 0x0201 | 0x02000 | 0x0040; // O_WRONLY | O_TRUNC | O_CREAT
             int mode = 0644;
 
@@ -45,40 +45,22 @@ public class IoUringWriteExample {
             fd = (int) open.invoke(pathSegment, flags, mode);
 
             // align memory
-            MethodHandle posixMemalignHandle = linker.downcallHandle(
-                    linker.defaultLookup().find("posix_memalign").orElseThrow(),
-                    FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_LONG, JAVA_LONG)
-            );
-
-            // Prepare the arguments for posix_memalign
             long alignment = 1024;
             long size = 1024;
 
-            // Allocate space for the pointer to the aligned memory
-            MemorySegment bufPtr = arena.allocate(ADDRESS);
-
-            ret = (int) posixMemalignHandle.invoke(bufPtr, alignment, size);
-            if (ret != 0) {
-                throw new RuntimeException("posix_memalign failed with code: %d".formatted(ret));
-            }
+            MemorySegment bufPtr = arena.allocate(size,alignment);
 
             // The content to write to the file
-            String content = "Hello io_uring! from home";
-            MemorySegment mem = bufPtr.reinterpret(size);
-            mem.setString(0, content);
+            bufPtr.setString(0, content);
 
-            // get a sqe to fill
+            // get a sqe to submit a write request
             MemorySegment sqe = liburingtest.io_uring_get_sqe(ring);
 
             // set user data, so it's possible to match requests with cqe
             // number to look for in the cqe
             long userData = 9876432L;
 
-            // alternative way to set userdata
-            // io_uring_sqe.user_data(sqe.reinterpret(io_uring_sqe.layout().byteSize()),userData);
-
-            // set the user data
-            liburingtest.io_uring_sqe_set_data(sqe, arena.allocateFrom(JAVA_LONG, userData));
+            liburingtest.io_uring_sqe_set_data_long(sqe,  userData);
 
             System.out.println("submit job with user data " + userData);
 
@@ -102,12 +84,9 @@ public class IoUringWriteExample {
                 throw new RuntimeException("io_uring_wait_cqe failed with code: " + ret);
             }
 
-            // Get the user data that was set earlier
+            // Get the user data that was set earlier to match requests
             MemorySegment usersData = liburingtest.io_uring_cqe_get_data(cqePtr);
-            MemorySegment ptr = usersData.reinterpret(JAVA_LONG.byteSize(), arena, null);
-
-            long userDatas = liburingtest.io_uring_cqe_get_data(ptr).reinterpret(JAVA_LONG.byteSize(), arena, null).getAtIndex(JAVA_LONG, 0);
-            System.out.printf("Got finished job  = %d%n", userDatas);
+            System.out.printf("Got finished job  = %d%n", usersData.get(JAVA_LONG,0));
 
             // mark as the cqe consumed
             liburingtest.io_uring_cqe_seen(ring, cqePtr);
@@ -115,7 +94,7 @@ public class IoUringWriteExample {
             // close the resources used for this ring
             liburingtest.io_uring_queue_exit(ring);
 
-            //// close the file
+            // close the file
             MethodHandle close = linker.downcallHandle(
                     cStdLib.find("close").get(),
                     FunctionDescriptor.ofVoid(JAVA_INT)

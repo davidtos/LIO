@@ -15,7 +15,7 @@ public class IoUringReadExample {
     public static void main(String[] args) throws Throwable {
         int fd, ret;
         String path = "./tmp_file";
-        int fileSize = (int) new File("./tmp_file").length();
+        int fileSize = (int) new File(path).length();
 
         try (var arena = Arena.ofConfined()) {
             final var linker = Linker.nativeLinker();
@@ -24,7 +24,8 @@ public class IoUringReadExample {
             // Create and set ring parameters
             MemorySegment ioup = arena.allocate(io_uring_params.layout());
             io_uring_params.flags(ioup, (1 << 1));
-            io_uring_params.sq_thread_idle(ioup, 2000);
+            int ThreadIdleTimeInMilliseconds = 2000;
+            io_uring_params.sq_thread_idle(ioup, ThreadIdleTimeInMilliseconds);
 
             // Init ring
             MemorySegment ring = arena.allocate(io_uring.layout());
@@ -52,7 +53,7 @@ public class IoUringReadExample {
             // register the file descriptor
             liburingtest.io_uring_register_files(ring, fds, 1);
 
-            // Create read request
+            // Create read request, set the polling flag
             MemorySegment sqe = liburingtest.io_uring_get_sqe(ring);
             liburingtest.io_uring_sqe_set_flags(sqe, 1 << 0);
 
@@ -61,7 +62,8 @@ public class IoUringReadExample {
 
             // prepare the read
             int fdPosition = 0; // which fd from the array to use
-            liburingtest.io_uring_prep_read(sqe, fdPosition, buff, fileSize, 0);
+            int offset = 0;
+            liburingtest.io_uring_prep_read(sqe, fdPosition, buff, fileSize, offset);
 
             // set user data, so it's possible to match requests with cqe
             liburingtest.io_uring_sqe_set_data_long(sqe, 12345L);
