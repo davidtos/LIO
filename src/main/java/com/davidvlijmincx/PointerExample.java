@@ -2,12 +2,11 @@ package com.davidvlijmincx;
 
 import java.lang.foreign.*;
 import java.lang.invoke.MethodHandle;
-import java.lang.invoke.VarHandle;
 
 import static java.lang.foreign.ValueLayout.ADDRESS;
 import static java.lang.foreign.ValueLayout.JAVA_INT;
 
-public class FunctionExamples {
+public class PointerExample {
 
     public static void main(String[] args) {
 
@@ -15,19 +14,23 @@ public class FunctionExamples {
         try (var arena = Arena.ofConfined()) {
             final var linker = Linker.nativeLinker();
 
+            // Description of the C method
             MethodHandle malloc = linker.downcallHandle(
                     linker.defaultLookup().find("malloc").orElseThrow(),
                     FunctionDescriptor.of(ADDRESS, JAVA_INT)
             );
 
+            // Allocate 8 bytes
             MemorySegment pointer = (MemorySegment) malloc.invoke(8);
 
+            // The size is 0 because pointer
             System.out.println("size = " + pointer.byteSize());
 
 
-            // second part
-            MethodHandle free = linker.downcallHandle(linker.defaultLookup().find("free").orElseThrow(), FunctionDescriptor.ofVoid(ADDRESS)
-            );
+            // second part - reinterpret 
+            MethodHandle free = linker.downcallHandle(linker.defaultLookup()
+            .find("free").orElseThrow(), FunctionDescriptor.ofVoid(ADDRESS));
+
             MemorySegment mallocMemory = pointer.reinterpret(8, arena, c -> {
                 try {
                     free.invokeExact(c);
@@ -35,7 +38,11 @@ public class FunctionExamples {
                     throw new RuntimeException(e);
                 }
             });
+
+            // Can now store value
             mallocMemory.set(JAVA_INT, 0, 1);
+
+            // proof
             int storedValue = mallocMemory.get(JAVA_INT, 0);
             System.out.println("storedValue = " + storedValue);
 

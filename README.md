@@ -16,7 +16,7 @@ The library contains a working example of FUSE and IO_URING with liburing.
 The code that calls the C code is generated using [Jextract](https://github.com/openjdk/jextract). Jextract creates Java code based on the header files.
 
 To generate FUSE:
-`jextract -D_FILE_OFFSET_BITS=64 -D FUSE_USE_VERSION=35 --source -d generated/src -t org.libfuse -I /Documents/libfuse-fuse-3.10.5/include/ /Documents/libfuse-fuse-3.10.5/include/fuse.h`
+`jextract -D _FILE_OFFSET_BITS=64 -D FUSE_USE_VERSION=35 --source -d generated/src -t org.libfuse -I /Documents/libfuse-fuse-3.10.5/include/ /Documents/libfuse-fuse-3.10.5/include/fuse.h`
 
 To generate Liburing:
 `jextract -D IOURINGINLINE=extern  -l uring -t io.uring -I include --output ./generated --header-class-name liburingtest include/liburing.h`
