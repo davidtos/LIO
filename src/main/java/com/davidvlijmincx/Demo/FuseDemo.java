@@ -24,6 +24,11 @@ public class FuseDemo {
     public static void main(String[] args) throws NoSuchMethodException, IllegalAccessException, IOException {
         args = new String[]{"-f", "-d", "/home/david/test/"};
 
+
+
+        // Fuse Main Method
+        // fuse_main_real(argc, argv, op, sizeof(*(op)), private_data)
+
     }
 
     public static int getAttr(MemorySegment path, MemorySegment statMemorySegment, MemorySegment fi) {
