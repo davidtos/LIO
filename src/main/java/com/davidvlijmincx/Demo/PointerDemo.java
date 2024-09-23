@@ -22,6 +22,9 @@ public class PointerDemo {
                     FunctionDescriptor.of(ADDRESS, JAVA_INT)
             );
 
+            MethodHandle free = linker.downcallHandle(linker.defaultLookup()
+                    .find("free").orElseThrow(), FunctionDescriptor.ofVoid(ADDRESS));
+
             // Allocate 8 bytes
             MemorySegment pointer = (MemorySegment) malloc.invoke(8);
 

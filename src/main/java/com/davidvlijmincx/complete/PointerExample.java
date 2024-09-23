@@ -1,4 +1,4 @@
-package com.davidvlijmincx;
+package com.davidvlijmincx.complete;
 
 import java.lang.foreign.*;
 import java.lang.invoke.MethodHandle;
@@ -20,16 +20,18 @@ public class PointerExample {
                     FunctionDescriptor.of(ADDRESS, JAVA_INT)
             );
 
+            MethodHandle free = linker.downcallHandle(linker.defaultLookup()
+                    .find("free").orElseThrow(), FunctionDescriptor.ofVoid(ADDRESS));
+
             // Allocate 8 bytes
             MemorySegment pointer = (MemorySegment) malloc.invoke(8);
 
             // The size is 0 because pointer
             System.out.println("size = " + pointer.byteSize());
 
+            ////// demo starts here ////////
+            // second part - reinterpret
 
-            // second part - reinterpret 
-            MethodHandle free = linker.downcallHandle(linker.defaultLookup()
-            .find("free").orElseThrow(), FunctionDescriptor.ofVoid(ADDRESS));
 
             MemorySegment mallocMemory = pointer.reinterpret(8, arena, c -> {
                 try {

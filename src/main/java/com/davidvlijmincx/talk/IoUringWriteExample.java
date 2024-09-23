@@ -13,17 +13,37 @@ public class IoUringWriteExample {
 
     static int QD = 4;
     static String path = "./tmp_file";
-    static String content = "Hello, io_uring!";
+    static String content = "Hello, io_uring!!";
+
+    static int flags = 0x0201 | 0x02000 | 0x0040; // O_WRONLY | O_TRUNC | O_CREAT
+    static int mode = 0644;
 
     public static void main(String[] args) throws Throwable {
         int fd, ret;
 
         try (var arena = Arena.ofConfined()) {
-            SymbolLookup liburing = SymbolLookup.libraryLookup("/lib/liburing-ffi.so", arena);
+
+            MemorySegment pathSegment = arena.allocateFrom(path);
 
             final var linker = Linker.nativeLinker();
             final var defaultLookup = linker.defaultLookup();
 
+            MethodHandle open = linker.downcallHandle(
+                    defaultLookup.find("open").orElseThrow(),
+                    FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_INT, JAVA_INT)
+            );
+
+            MethodHandle close = linker.downcallHandle(
+                    defaultLookup.find("close").get(),
+                    FunctionDescriptor.ofVoid(JAVA_INT)
+            );
+
+            // open file
+            // Allocate native memory for the file path
+            fd = (int) open.invoke(pathSegment, flags, mode);
+
+
+            SymbolLookup liburing = SymbolLookup.libraryLookup("/lib/liburing-ffi.so", arena);
             // Init ring
             MemorySegment ring = arena.allocate(io_uring.layout());
 
@@ -34,29 +54,12 @@ public class IoUringWriteExample {
 
             ret = (int) io_uring_queue_init.invoke(QD, ring, 0);
 
-
             if (ret < 0) {
                 System.out.println("ring init ret = " + ret);
             }
 
-            // open file
-            MethodHandle open = linker.downcallHandle(
-                    defaultLookup.find("open").orElseThrow(),
-                    FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_INT, JAVA_INT)
-            );
-
-            int flags = 0x0201 | 0x02000 | 0x0040; // O_WRONLY | O_TRUNC | O_CREAT
-            int mode = 0644;
-
-            // Allocate native memory for the file path
-            MemorySegment pathSegment = arena.allocateFrom(path);
-            fd = (int) open.invoke(pathSegment, flags, mode);
-
             // align memory
-            long alignment = 1024;
-            long size = 1024;
-
-            MemorySegment bufPtr = arena.allocate(size,alignment);
+            MemorySegment bufPtr = arena.allocate(1024,1024);
 
             // The content to write to the file
             bufPtr.setString(0, content);
@@ -74,10 +77,7 @@ public class IoUringWriteExample {
             System.out.println("submit job with user data " + userData);
 
             // prep the IO write
-            int nbytes = content.length();
-            long offset = 0;
-
-            liburingtest.io_uring_prep_write(sqe, fd, bufPtr, nbytes, offset);
+            liburingtest.io_uring_prep_write(sqe, fd, bufPtr, content.length(), 0);
 
             // Submit the queue to be picked up
             ret = liburingtest.io_uring_submit(ring);
@@ -104,15 +104,14 @@ public class IoUringWriteExample {
             liburingtest.io_uring_queue_exit(ring);
 
             // close the file
-            MethodHandle close = linker.downcallHandle(
-                    defaultLookup.find("close").get(),
-                    FunctionDescriptor.ofVoid(JAVA_INT)
-            );
 
             close.invoke(fd);
 
         }
 
+    }
+
+    public static void close(MemorySegment cqePtr) {
 
     }
 }

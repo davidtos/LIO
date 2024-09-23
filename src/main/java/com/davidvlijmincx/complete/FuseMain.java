@@ -1,4 +1,4 @@
-package com.davidvlijmincx;
+package com.davidvlijmincx.complete;
 
 import com.davidvlijmincx.generated.src.org.libfuse.*;
 
@@ -88,7 +88,6 @@ public class FuseMain {
         return 0;
     }
 
-
     public static int readDir(MemorySegment path, MemorySegment buffer, MemorySegment filler, long offset, MemorySegment fileInfo, int flags) {
 
         fuse_fill_dir_t.invoke(filler,buffer, fuseScope.allocateFrom("."), MemorySegment.NULL, 0, 0);
@@ -110,6 +109,7 @@ public class FuseMain {
     }
 
     public static int read(MemorySegment path, MemorySegment buffer, long size, long offset, MemorySegment fileInfo) {
+
         String jPath = path.getString(0).substring(1);
 
         if (!isFile(jPath)) {

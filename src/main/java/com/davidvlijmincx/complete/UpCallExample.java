@@ -1,4 +1,4 @@
-package com.davidvlijmincx;
+package com.davidvlijmincx.complete;
 
 import java.lang.foreign.*;
 import java.lang.invoke.MethodHandle;
@@ -17,25 +17,25 @@ public class UpCallExample {
 
         final var linker = Linker.nativeLinker();
 
-        // down call -  void (*signal(int sig, void (*func)(int)))(int)
-        MethodHandle signal = linker.downcallHandle(
-                linker.defaultLookup().find("signal").orElseThrow(),
-                FunctionDescriptor.ofVoid(JAVA_INT, ADDRESS)
-        );
-
         // up call
-        MethodHandle comparHandle = MethodHandles.lookup()
+        MethodHandle handleSignal = MethodHandles.lookup()
                 .findStatic(UpCallExample.class,
                         "handleSignal",
                         MethodType.methodType(void.class, int.class));
 
-        FunctionDescriptor signalHandler = FunctionDescriptor.ofVoid(ValueLayout.JAVA_INT);
+        FunctionDescriptor signalDescriptor = FunctionDescriptor.ofVoid(ValueLayout.JAVA_INT);
 
-        MemorySegment handlerFunc = linker.upcallStub(comparHandle,
-                signalHandler,
+        MemorySegment handlerFunc = linker.upcallStub(handleSignal,
+                signalDescriptor,
                 Arena.ofAuto());
 
         try (var _ = Arena.ofConfined()) {
+
+            // down call -  void (*signal(int sig, void (*func)(int)))(int)
+            MethodHandle signal = linker.downcallHandle(
+                    linker.defaultLookup().find("signal").orElseThrow(),
+                    FunctionDescriptor.ofVoid(JAVA_INT, ADDRESS)
+            );
 
             signal.invoke(2, handlerFunc);
 

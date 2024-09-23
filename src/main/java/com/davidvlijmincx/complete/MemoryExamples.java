@@ -1,4 +1,4 @@
-package com.davidvlijmincx;
+package com.davidvlijmincx.complete;
 
 import java.lang.foreign.*;
 import java.lang.invoke.VarHandle;

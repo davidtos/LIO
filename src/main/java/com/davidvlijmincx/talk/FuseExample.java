@@ -11,6 +11,8 @@ import java.nio.ByteBuffer;
 import java.time.Instant;
 import java.util.*;
 
+import static java.lang.foreign.ValueLayout.ADDRESS;
+
 public class FuseExample {
 
     static List<String> directories = new ArrayList<>();
@@ -18,10 +20,15 @@ public class FuseExample {
     static Map<String, String> filesContent = new HashMap<>();
     static Arena fuseScope = null;
 
-    public static void main(String[] args) throws NoSuchMethodException, IllegalAccessException, IOException {
+    public static void main(String[] args) throws Throwable {
         args = new String[]{"-f", "-d", "/home/david/test/"};
 
+
+        ///////////////////////////////
+        // PART 1
+        //////////////////////////////
         try (var arena = Arena.ofShared()) {
+
             MemorySegment pointers = arena.allocate(ValueLayout.ADDRESS, args.length);
             fuseScope = arena;
 
@@ -29,6 +36,13 @@ public class FuseExample {
                 MemorySegment cString = arena.allocateFrom(args[i]);
                 pointers.setAtIndex(ValueLayout.ADDRESS, i, cString);
             }
+
+            final var linker = Linker.nativeLinker();
+            SymbolLookup symbolLookup = SymbolLookup.libraryLookup("/lib/x86_64-linux-gnu/libfuse3.so.3", arena);
+
+            ///////////////////////////////
+            // PART 3
+            //////////////////////////////
 
             MemorySegment operationsMemorySegment = fuse_operations.allocate(arena);
 
@@ -44,7 +58,6 @@ public class FuseExample {
                     fuse_h.C_POINTER
             );
 
-
             MemorySegment handlerFunc = Linker.nativeLinker().upcallStub(
                     getAttr,
                     functionDescriptor,
@@ -58,8 +71,25 @@ public class FuseExample {
             fuse_operations.mknod(operationsMemorySegment, fuse_operations.mknod.allocate(FuseExample::doMknod, arena));
             fuse_operations.write(operationsMemorySegment, fuse_operations.write.allocate(FuseExample::doWrite, arena));
 
-            var argumentCount = args.length;
-            fuse_h.fuse_main_real(argumentCount, pointers, operationsMemorySegment, operationsMemorySegment.byteSize(), MemorySegment.NULL);
+            ///////////////////////////////
+            // PART 2
+            //////////////////////////////
+
+            FunctionDescriptor descriptor = FunctionDescriptor.of(
+                    fuse_h.C_INT,
+                    fuse_h.C_INT,
+                    fuse_h.C_POINTER,
+                    fuse_h.C_POINTER,
+                    fuse_h.C_LONG,
+                    fuse_h.C_POINTER
+            );
+
+            MethodHandle fuse_main_real = linker.downcallHandle(
+                    symbolLookup
+                    .find("fuse_main_real").orElseThrow(), descriptor);
+
+
+            fuse_main_real.invoke(args.length, pointers, operationsMemorySegment, operationsMemorySegment.byteSize(), MemorySegment.NULL);
         }
 
 
@@ -113,7 +143,6 @@ public class FuseExample {
         return 0;
     }
 
-
     public static int readDir(MemorySegment path, MemorySegment buffer, MemorySegment filler, long offset, MemorySegment fileInfo, int flags) {
 
         fuse_fill_dir_t.invoke(filler, buffer, fuseScope.allocateFrom("."), MemorySegment.NULL, 0, 0);
@@ -134,7 +163,17 @@ public class FuseExample {
         return 0;
     }
 
+    static int doMknod(MemorySegment path, int mode, long rdev) {
+        String jPath = path.getString(0);
+        addFile(jPath.substring(1));
+        return 0;
+    }
+
     public static int read(MemorySegment path, MemorySegment buffer, long size, long offset, MemorySegment fileInfo) {
+        // !!!!
+            // Do the pointer demo!
+        // !!!
+
         String jPath = path.getString(0).substring(1);
 
         if (!isFile(jPath)) {
@@ -154,12 +193,6 @@ public class FuseExample {
     static int doMkdir(MemorySegment path, int mode) {
         String jPath = path.getString(0);
         directories.add(jPath.substring(1));
-        return 0;
-    }
-
-    static int doMknod(MemorySegment path, int mode, long rdev) {
-        String jPath = path.getString(0);
-        addFile(jPath.substring(1));
         return 0;
     }
 

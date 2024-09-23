@@ -13,6 +13,7 @@ import java.util.*;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
+// https://www.cs.hmc.edu/~geoff/classes/hmc.cs135.201001/homework/fuse/fuse_doc.html
 public class FuseDemo {
 
     static List<String> directories = new ArrayList<>();
@@ -85,14 +86,17 @@ public class FuseDemo {
         return 0;
     }
 
+    // read(const char* path, char *buf, size_t size, off_t offset, struct fuse_file_info* fi)
     public static int read(MemorySegment path, MemorySegment buffer, long size, long offset, MemorySegment fileInfo) {
        throw new UnsupportedOperationException("Not supported yet.");
     }
 
+    // mkdir(const char* path, mode_t mode)
     static int doMkdir(MemorySegment path, int mode) {
         throw new UnsupportedOperationException("Not supported yet.");
     }
 
+    // write(const char* path, char *buf, size_t size, off_t offset, struct fuse_file_info* fi)
     static int doWrite(MemorySegment path, MemorySegment buffer, long size, long offset, MemorySegment info) {
         throw new UnsupportedOperationException("Not supported yet.");
     }
