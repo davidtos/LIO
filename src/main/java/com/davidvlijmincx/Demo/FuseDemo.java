@@ -4,8 +4,13 @@ import com.davidvlijmincx.generated.src.org.libfuse.*;
 
 import java.io.IOException;
 import java.lang.foreign.*;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import java.time.Instant;
 import java.util.*;
+
+import static java.lang.foreign.MemoryLayout.PathElement.groupElement;
 
 // https://www.cs.hmc.edu/~geoff/classes/hmc.cs135.201001/homework/fuse/fuse_doc.html
 public class FuseDemo {
@@ -17,11 +22,7 @@ public class FuseDemo {
 
 
     public static void main(String[] args) throws Throwable {
-        args = new String[]{"-f", "-d", "/home/david/test/"};
 
-
-        // Fuse Main Method
-        // fuse_main_real(argc, argv, op, sizeof(*(op)), private_data)
 
     }
 
