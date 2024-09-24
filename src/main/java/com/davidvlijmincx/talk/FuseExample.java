@@ -11,7 +11,7 @@ import java.nio.ByteBuffer;
 import java.time.Instant;
 import java.util.*;
 
-import static java.lang.foreign.ValueLayout.ADDRESS;
+import static java.lang.foreign.MemoryLayout.PathElement.groupElement;
 
 public class FuseExample {
 
@@ -29,22 +29,23 @@ public class FuseExample {
         //////////////////////////////
         try (var arena = Arena.ofShared()) {
 
-            MemorySegment pointers = arena.allocate(ValueLayout.ADDRESS, args.length);
             fuseScope = arena;
+            MemorySegment pointers = arena.allocate(ValueLayout.ADDRESS, args.length);
+            
 
             for (int i = 0; i < args.length; i++) {
                 MemorySegment cString = arena.allocateFrom(args[i]);
                 pointers.setAtIndex(ValueLayout.ADDRESS, i, cString);
             }
 
-            final var linker = Linker.nativeLinker();
+            Linker linker = Linker.nativeLinker();
             SymbolLookup symbolLookup = SymbolLookup.libraryLookup("/lib/x86_64-linux-gnu/libfuse3.so.3", arena);
 
             ///////////////////////////////
             // PART 3
             //////////////////////////////
 
-            MemorySegment operationsMemorySegment = fuse_operations.allocate(arena);
+            MemorySegment operationsMemorySegment = arena.allocate(getFuseOpsLayout());
 
             MethodHandle getAttr = MethodHandles.lookup()
                     .findStatic(FuseExample.class,
@@ -52,10 +53,10 @@ public class FuseExample {
                             MethodType.methodType(int.class, MemorySegment.class, MemorySegment.class, MemorySegment.class));
 
             FunctionDescriptor functionDescriptor = FunctionDescriptor.of(
-                    fuse_h.C_INT,
-                    fuse_h.C_POINTER,
-                    fuse_h.C_POINTER,
-                    fuse_h.C_POINTER
+                    ValueLayout.JAVA_INT,
+                    ValueLayout.ADDRESS,
+                    ValueLayout.ADDRESS,
+                    ValueLayout.ADDRESS
             );
 
             MemorySegment handlerFunc = Linker.nativeLinker().upcallStub(
@@ -63,7 +64,7 @@ public class FuseExample {
                     functionDescriptor,
                     arena);
 
-            fuse_operations.getattr(operationsMemorySegment, handlerFunc);
+            operationsMemorySegment.set( (AddressLayout)getFuseOpsLayout().select(groupElement("getattr")), 0, handlerFunc);
 
             fuse_operations.readdir(operationsMemorySegment, fuse_operations.readdir.allocate(FuseExample::readDir, arena));
             fuse_operations.read(operationsMemorySegment, fuse_operations.read.allocate(FuseExample::read, arena));
@@ -200,6 +201,53 @@ public class FuseExample {
         String jPath = path.getString(0).substring(1);
         filesContent.put(jPath, buffer.getString(offset, java.nio.charset.StandardCharsets.UTF_8));
         return Math.toIntExact(size);
+    }
+
+    static StructLayout getFuseOpsLayout() {
+        return MemoryLayout.structLayout(
+                ValueLayout.ADDRESS.withName("getattr"),
+                ValueLayout.ADDRESS.withName("readlink"),
+                ValueLayout.ADDRESS.withName("mknod"),
+                ValueLayout.ADDRESS.withName("mkdir"),
+                ValueLayout.ADDRESS.withName("unlink"),
+                ValueLayout.ADDRESS.withName("rmdir"),
+                ValueLayout.ADDRESS.withName("symlink"),
+                ValueLayout.ADDRESS.withName("rename"),
+                ValueLayout.ADDRESS.withName("link"),
+                ValueLayout.ADDRESS.withName("chmod"),
+                ValueLayout.ADDRESS.withName("chown"),
+                ValueLayout.ADDRESS.withName("truncate"),
+                ValueLayout.ADDRESS.withName("open"),
+                ValueLayout.ADDRESS.withName("read"),
+                ValueLayout.ADDRESS.withName("write"),
+                ValueLayout.ADDRESS.withName("statfs"),
+                ValueLayout.ADDRESS.withName("flush"),
+                ValueLayout.ADDRESS.withName("release"),
+                ValueLayout.ADDRESS.withName("fsync"),
+                ValueLayout.ADDRESS.withName("setxattr"),
+                ValueLayout.ADDRESS.withName("getxattr"),
+                ValueLayout.ADDRESS.withName("listxattr"),
+                ValueLayout.ADDRESS.withName("removexattr"),
+                ValueLayout.ADDRESS.withName("opendir"),
+                ValueLayout.ADDRESS.withName("readdir"),
+                ValueLayout.ADDRESS.withName("releasedir"),
+                ValueLayout.ADDRESS.withName("fsyncdir"),
+                ValueLayout.ADDRESS.withName("init"),
+                ValueLayout.ADDRESS.withName("destroy"),
+                ValueLayout.ADDRESS.withName("access"),
+                ValueLayout.ADDRESS.withName("create"),
+                ValueLayout.ADDRESS.withName("lock"),
+                ValueLayout.ADDRESS.withName("utimens"),
+                ValueLayout.ADDRESS.withName("bmap"),
+                ValueLayout.ADDRESS.withName("ioctl"),
+                ValueLayout.ADDRESS.withName("poll"),
+                ValueLayout.ADDRESS.withName("write_buf"),
+                ValueLayout.ADDRESS.withName("read_buf"),
+                ValueLayout.ADDRESS.withName("flock"),
+                ValueLayout.ADDRESS.withName("fallocate"),
+                ValueLayout.ADDRESS.withName("copy_file_range"),
+                ValueLayout.ADDRESS.withName("lseek")
+        ).withName("fuse_operations");
     }
 
 
