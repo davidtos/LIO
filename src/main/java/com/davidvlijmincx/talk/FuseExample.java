@@ -12,6 +12,7 @@ import java.time.Instant;
 import java.util.*;
 
 import static java.lang.foreign.MemoryLayout.PathElement.groupElement;
+import static java.lang.foreign.ValueLayout.JAVA_BYTE;
 
 public class FuseExample {
 
@@ -31,7 +32,7 @@ public class FuseExample {
 
             fuseScope = arena;
             MemorySegment pointers = arena.allocate(ValueLayout.ADDRESS, args.length);
-            
+
 
             for (int i = 0; i < args.length; i++) {
                 MemorySegment cString = arena.allocateFrom(args[i]);
@@ -40,6 +41,9 @@ public class FuseExample {
 
             Linker linker = Linker.nativeLinker();
             SymbolLookup symbolLookup = SymbolLookup.libraryLookup("/lib/x86_64-linux-gnu/libfuse3.so.3", arena);
+
+            AddressLayout C_POINTER = ValueLayout.ADDRESS
+                    .withTargetLayout(MemoryLayout.sequenceLayout(Long.MAX_VALUE, ValueLayout.JAVA_BYTE));
 
             ///////////////////////////////
             // PART 3
@@ -54,9 +58,9 @@ public class FuseExample {
 
             FunctionDescriptor functionDescriptor = FunctionDescriptor.of(
                     ValueLayout.JAVA_INT,
-                    ValueLayout.ADDRESS,
-                    ValueLayout.ADDRESS,
-                    ValueLayout.ADDRESS
+                    C_POINTER,
+                    C_POINTER,
+                    C_POINTER
             );
 
             MemorySegment handlerFunc = Linker.nativeLinker().upcallStub(
@@ -77,12 +81,12 @@ public class FuseExample {
             //////////////////////////////
 
             FunctionDescriptor descriptor = FunctionDescriptor.of(
-                    fuse_h.C_INT,
-                    fuse_h.C_INT,
-                    fuse_h.C_POINTER,
-                    fuse_h.C_POINTER,
-                    fuse_h.C_LONG,
-                    fuse_h.C_POINTER
+                    ValueLayout.JAVA_INT,
+                    ValueLayout.JAVA_INT,
+                    C_POINTER,
+                    C_POINTER,
+                    ValueLayout.JAVA_LONG,
+                    C_POINTER
             );
 
             MethodHandle fuse_main_real = linker.downcallHandle(

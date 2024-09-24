@@ -16,7 +16,7 @@ public class FuseDemo {
     static Arena fuseScope = null;
 
 
-    public static void main(String[] args) throws NoSuchMethodException, IllegalAccessException, IOException {
+    public static void main(String[] args) throws Throwable {
         args = new String[]{"-f", "-d", "/home/david/test/"};
 
 
