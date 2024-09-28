@@ -97,9 +97,11 @@ public class FuseDemo {
         throw new UnsupportedOperationException("Not supported yet.");
     }
 
-    // write(const char* path, char *buf, size_t size, off_t offset, struct fuse_file_info* fi)
+
     static int doWrite(MemorySegment path, MemorySegment buffer, long size, long offset, MemorySegment info) {
-        throw new UnsupportedOperationException("Not supported yet.");
+        String jPath = path.getString(0).substring(1);
+        filesContent.put(jPath, buffer.getString(offset, java.nio.charset.StandardCharsets.UTF_8));
+        return Math.toIntExact(size);
     }
 
     static boolean isDir(String path) {
