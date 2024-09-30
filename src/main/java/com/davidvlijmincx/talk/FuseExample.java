@@ -12,7 +12,6 @@ import java.time.Instant;
 import java.util.*;
 
 import static java.lang.foreign.MemoryLayout.PathElement.groupElement;
-import static java.lang.foreign.ValueLayout.JAVA_BYTE;
 
 public class FuseExample {
 
@@ -24,12 +23,9 @@ public class FuseExample {
     public static void main(String[] args) throws Throwable {
         args = new String[]{"-f", "-d", "/home/david/test/"};
 
-
-        ///////////////////////////////
         // PART 1
         //////////////////////////////
         try (var arena = Arena.ofShared()) {
-
             fuseScope = arena;
             MemorySegment pointers = arena.allocate(ValueLayout.ADDRESS, args.length);
 
@@ -68,7 +64,7 @@ public class FuseExample {
                     functionDescriptor,
                     arena);
 
-            operationsMemorySegment.set( (AddressLayout)getFuseOpsLayout().select(groupElement("getattr")), 0, handlerFunc);
+            operationsMemorySegment.set((AddressLayout)getFuseOpsLayout().select(groupElement("getattr")), 0, handlerFunc);
 
             fuse_operations.readdir(operationsMemorySegment, fuse_operations.readdir.allocate(FuseExample::readDir, arena));
             fuse_operations.read(operationsMemorySegment, fuse_operations.read.allocate(FuseExample::read, arena));
@@ -175,24 +171,16 @@ public class FuseExample {
     }
 
     public static int read(MemorySegment path, MemorySegment buffer, long size, long offset, MemorySegment fileInfo) {
-        // !!!!
-            // Do the pointer demo!
-        // !!!
-
         String jPath = path.getString(0).substring(1);
 
-        if (!isFile(jPath)) {
-            return -1;
-        }
+        if (!isFile(jPath)) { return -1;}
 
         byte[] selected = filesContent.get(jPath).getBytes();
 
-        ByteBuffer byteBuffer = buffer.reinterpret(size).asByteBuffer();
+        var byteBuffer = buffer.reinterpret(size).asByteBuffer();
+        byteBuffer.put(selected, (int) offset, selected.length);
 
-        byte[] src = Arrays.copyOfRange(selected, Math.toIntExact(offset), Math.toIntExact(size));
-        byteBuffer.put(src);
-
-        return src.length;
+        return (int) size;
     }
 
     static int doMkdir(MemorySegment path, int mode) {
