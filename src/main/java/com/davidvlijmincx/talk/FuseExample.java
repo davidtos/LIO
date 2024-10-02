@@ -59,7 +59,7 @@ public class FuseExample {
                     C_POINTER
             );
 
-            MemorySegment handlerFunc = Linker.nativeLinker().upcallStub(
+            MemorySegment handlerFunc = linker.upcallStub(
                     getAttr,
                     functionDescriptor,
                     arena);
