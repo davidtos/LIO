@@ -87,6 +87,12 @@ public class FuseDemo {
         return 0;
     }
 
+    static int unlink(MemorySegment path) {
+        String jPath = path.getString(0);
+        files.remove(jPath.substring(1));
+        return 0;
+    }
+
     // read(const char* path, char *buf, size_t size, off_t offset, struct fuse_file_info* fi)
     public static int read(MemorySegment path, MemorySegment buffer, long size, long offset, MemorySegment fileInfo) {
         throw new UnsupportedOperationException("Not supported yet.");
@@ -100,7 +106,8 @@ public class FuseDemo {
 
     static int doWrite(MemorySegment path, MemorySegment buffer, long size, long offset, MemorySegment info) {
         String jPath = path.getString(0).substring(1);
-        filesContent.put(jPath, buffer.getString(offset, java.nio.charset.StandardCharsets.UTF_8));
+        String string = new String(buffer.reinterpret(size).toArray(ValueLayout.JAVA_BYTE));
+        filesContent.put(jPath, string);
         return Math.toIntExact(size);
     }
 

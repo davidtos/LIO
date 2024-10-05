@@ -8,6 +8,7 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.*;
 
@@ -71,6 +72,7 @@ public class FuseExample {
             fuse_operations.mkdir(operationsMemorySegment, fuse_operations.mkdir.allocate(FuseExample::doMkdir, arena));
             fuse_operations.mknod(operationsMemorySegment, fuse_operations.mknod.allocate(FuseExample::doMknod, arena));
             fuse_operations.write(operationsMemorySegment, fuse_operations.write.allocate(FuseExample::doWrite, arena));
+            fuse_operations.unlink(operationsMemorySegment, fuse_operations.unlink.allocate(FuseExample::unlink, arena));
 
             ///////////////////////////////
             // PART 2
@@ -170,6 +172,12 @@ public class FuseExample {
         return 0;
     }
 
+    static int unlink(MemorySegment path) {
+        String jPath = path.getString(0);
+        files.remove(jPath.substring(1));
+        return 0;
+    }
+
     public static int read(MemorySegment path, MemorySegment buffer, long size, long offset, MemorySegment fileInfo) {
         String jPath = path.getString(0).substring(1);
 
@@ -191,7 +199,8 @@ public class FuseExample {
 
     static int doWrite(MemorySegment path, MemorySegment buffer, long size, long offset, MemorySegment info) {
         String jPath = path.getString(0).substring(1);
-        filesContent.put(jPath, buffer.getString(offset, java.nio.charset.StandardCharsets.UTF_8));
+        String string = new String(buffer.reinterpret(size).toArray(ValueLayout.JAVA_BYTE));
+        filesContent.put(jPath, string);
         return Math.toIntExact(size);
     }
 
