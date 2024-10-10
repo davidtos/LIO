@@ -18,7 +18,7 @@ public class FuseExample {
 
     static List<String> directories = new ArrayList<>();
     static List<String> files = new ArrayList<>();
-    static Map<String, String> filesContent = new HashMap<>();
+    static Map<String, byte[]> filesContent = new HashMap<>();
     static Arena fuseScope = null;
 
     public static void main(String[] args) throws Throwable {
@@ -105,7 +105,7 @@ public class FuseExample {
 
     static void addFile(String filename) {
         files.add(filename);
-        filesContent.put(filename, "");
+        filesContent.put(filename, new byte[0]);
     }
 
     static boolean isFile(String path) {
@@ -138,7 +138,7 @@ public class FuseExample {
         } else if (isFile(jPath.substring(1))) {
             stat.st_mode(statMemorySegment, S_IFREG | 0644);
             stat.st_nlink(statMemorySegment, 1);
-            stat.st_size(statMemorySegment, filesContent.get(jPath.substring(1)).getBytes().length);
+            stat.st_size(statMemorySegment, filesContent.get(jPath.substring(1)).length);
         } else {
             return -2;
         }
@@ -183,7 +183,7 @@ public class FuseExample {
 
         if (!isFile(jPath)) { return -1;}
 
-        byte[] selected = filesContent.get(jPath).getBytes();
+        byte[] selected = filesContent.get(jPath);
 
         var byteBuffer = buffer.reinterpret(size).asByteBuffer();
         byteBuffer.put(selected, (int) offset, selected.length);
@@ -199,8 +199,8 @@ public class FuseExample {
 
     static int doWrite(MemorySegment path, MemorySegment buffer, long size, long offset, MemorySegment info) {
         String jPath = path.getString(0).substring(1);
-        String string = new String(buffer.reinterpret(size).toArray(ValueLayout.JAVA_BYTE));
-        filesContent.put(jPath, string);
+        byte[] writtenBytes = buffer.reinterpret(size).toArray(ValueLayout.JAVA_BYTE);
+        filesContent.put(jPath, writtenBytes);
         return Math.toIntExact(size);
     }
 

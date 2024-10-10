@@ -18,7 +18,7 @@ public class FuseDemo {
 
     static List<String> directories = new ArrayList<>();
     static List<String> files = new ArrayList<>();
-    static Map<String, String> filesContent = new HashMap<>();
+    static Map<String, byte[]> filesContent = new HashMap<>();
     static Arena fuseScope = null;
 
 
@@ -53,7 +53,7 @@ public class FuseDemo {
         } else if (isFile(jPath.substring(1))) {
             stat.st_mode(statMemorySegment, S_IFREG | 0644);
             stat.st_nlink(statMemorySegment, 1);
-            stat.st_size(statMemorySegment, filesContent.get(jPath.substring(1)).getBytes().length);
+            stat.st_size(statMemorySegment, filesContent.get(jPath.substring(1)).length);
         } else {
             return -2;
         }
@@ -106,8 +106,8 @@ public class FuseDemo {
 
     static int doWrite(MemorySegment path, MemorySegment buffer, long size, long offset, MemorySegment info) {
         String jPath = path.getString(0).substring(1);
-        String string = new String(buffer.reinterpret(size).toArray(ValueLayout.JAVA_BYTE));
-        filesContent.put(jPath, string);
+        byte[] writtenBytes = buffer.reinterpret(size).toArray(ValueLayout.JAVA_BYTE);
+        filesContent.put(jPath, writtenBytes);
         return Math.toIntExact(size);
     }
 
@@ -116,7 +116,7 @@ public class FuseDemo {
     }
     static void addFile(String filename) {
         files.add(filename);
-        filesContent.put(filename, "");
+        filesContent.put(filename, new byte[0]);
     }
     static boolean isFile(String path) {
         return files.contains(path);
