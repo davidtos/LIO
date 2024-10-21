@@ -39,7 +39,7 @@ public class BenchMarkLibUring {
     }
 
 
-    @Benchmark()
+  //@Benchmark()
     @BenchmarkMode(Mode.AverageTime)
     @OutputTimeUnit(TimeUnit.MILLISECONDS)
     public void ReadUsingBufferedReader(Blackhole blackhole, ExecutionPlan plan) throws Throwable {
@@ -60,7 +60,7 @@ public class BenchMarkLibUring {
     }
 
 
-    @Benchmark()
+  //@Benchmark()
     @BenchmarkMode(Mode.AverageTime)
     @OutputTimeUnit(TimeUnit.MILLISECONDS)
     public void readUsingChannel(Blackhole blackhole, ExecutionPlan plan) throws Throwable {
@@ -79,7 +79,7 @@ public class BenchMarkLibUring {
     }
 
 
-    @Benchmark()
+ // @Benchmark()
     @BenchmarkMode(Mode.AverageTime)
     @OutputTimeUnit(TimeUnit.MILLISECONDS)
     public void ReadUsingFileReader(Blackhole blackhole, ExecutionPlan plan) throws Throwable {
@@ -97,7 +97,7 @@ public class BenchMarkLibUring {
     }
 
 
-    @Benchmark()
+ //  @Benchmark()
     @BenchmarkMode(Mode.AverageTime)
     @OutputTimeUnit(TimeUnit.MILLISECONDS)
     public void ReadUsingLiburing(UringExecutionPlan plan, Blackhole blackhole) throws Throwable {
@@ -134,7 +134,7 @@ public class BenchMarkLibUring {
     }
 
 
-    @Benchmark()
+  //  @Benchmark()
     @BenchmarkMode(Mode.AverageTime)
     @OutputTimeUnit(TimeUnit.MILLISECONDS)
     public void ReadUsingLiburingWithFileDescriptorWrapper(UringExecutionPlan plan, Blackhole blackhole) throws Throwable {
@@ -153,9 +153,47 @@ public class BenchMarkLibUring {
             attMap.put(i, atts[i]);
         }
 
-        uring.passFdDirectly(atts, fdData.fdPointer());
+        uring.passFdDirectly(atts.length, fdData.fdPointer());
 
         uring.submit();
+
+        for (int i = 0; i < atts.length; i++) {
+            // TODO: Move the following two lines to C, Saving 2 calls
+            var pntr = uring.see(uring.arena.allocate(io_uring_cqe.layout()));
+            long userData = liburingtest.io_uring_cqe_get_data(pntr).get(JAVA_LONG, 0);
+            blackhole.consume(attMap.get((int) userData).buffer.getString(0));
+
+            uring.seen(pntr);
+
+        }
+
+        FdGetter.closeFiles(files, plan.closeFiles);
+
+    }
+
+
+    @Benchmark()
+    @BenchmarkMode(Mode.AverageTime)
+    @OutputTimeUnit(TimeUnit.MILLISECONDS)
+    public void ReadUsingLiburingWithFileDescriptorWrapperAndQueuePrepped(UringExecutionPlan plan, Blackhole blackhole) throws Throwable {
+
+        var files = plan.files;
+        var uring = plan.uring;
+
+        FileAtt[] atts = new FileAtt[files.length];
+        Map<Integer, FileAtt> attMap = new HashMap<>();
+
+        FdData fdData = FdGetter.openFiles(files, uring.arena, plan.openFiles, plan.pathsArray);
+        uring.passFdDirectly(files.length, fdData.fdPointer());
+
+
+        for (int i = 0; i < files.length; i++) {
+            atts[i] = new FileAtt(files[i], 0, i, uring.arena);
+            uring.createReadRequestDirectly(plan.queue_prepped, i, atts[i].buffer, atts[i].fileSize, atts[i].user_data);
+            attMap.put(i, atts[i]);
+
+            uring.submit();
+        }
 
         for (int i = 0; i < atts.length; i++) {
             // TODO: Move the following two lines to C, Saving 2 calls

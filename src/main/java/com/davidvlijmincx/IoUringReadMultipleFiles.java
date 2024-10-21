@@ -17,7 +17,8 @@ public class IoUringReadMultipleFiles implements AutoCloseable {
     private final MemorySegment ring;
     MethodHandle open;
     MethodHandle close;
-    public IoUringReadMultipleFiles(int qd){
+
+    public IoUringReadMultipleFiles(int qd) {
         arena = Arena.ofConfined();
 
         MemorySegment ioup = arena.allocate(io_uring_params.layout());
@@ -37,7 +38,7 @@ public class IoUringReadMultipleFiles implements AutoCloseable {
                 FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_INT)
         );
 
-       close = linker.downcallHandle(
+        close = linker.downcallHandle(
                 defaultLookup.find("close").orElseThrow(),
                 FunctionDescriptor.ofVoid(JAVA_INT)
         );
@@ -48,8 +49,7 @@ public class IoUringReadMultipleFiles implements AutoCloseable {
     }
 
 
-    // TODO: Perform these operations in C. - Saving 4 calls
-    public void createReadRequest(MemorySegment buff, int fileSize, int fdPosition, long data){
+    public void createReadRequest(MemorySegment buff, int fileSize, int fdPosition, long data) {
         // Create read request, set the polling flag
         MemorySegment sqe = liburingtest.io_uring_get_sqe(ring);
         liburingtest.io_uring_sqe_set_flags(sqe, 1);
@@ -65,7 +65,11 @@ public class IoUringReadMultipleFiles implements AutoCloseable {
 
     }
 
-    public void submit(){
+    public void createReadRequestDirectly(MethodHandle queue_prepped, int fdPosition, MemorySegment buff, int fileSize, long data) throws Throwable {
+        queue_prepped.invoke(ring, fdPosition, buff, fileSize, data);
+    }
+
+    public void submit() {
         // Submit the queue to be picked up
         int ret = liburingtest.io_uring_submit(ring);
 
@@ -74,7 +78,7 @@ public class IoUringReadMultipleFiles implements AutoCloseable {
         }
     }
 
-    public void registerFds(FileAtt[] fdSet, MemorySegment fds){
+    public void registerFds(FileAtt[] fdSet, MemorySegment fds) {
         // Create an area to of fds to register later
 
         for (int i = 0; i < fdSet.length; i++) {
@@ -85,9 +89,9 @@ public class IoUringReadMultipleFiles implements AutoCloseable {
         liburingtest.io_uring_register_files(ring, fds, fdSet.length);
     }
 
-    public void passFdDirectly(FileAtt[] fdSet, MemorySegment fds){
+    public void passFdDirectly(int length, MemorySegment fds) {
         // register the file descriptor
-        liburingtest.io_uring_register_files(ring, fds, fdSet.length);
+        liburingtest.io_uring_register_files(ring, fds, length);
     }
 
     public int getFd(String path) throws Throwable {
@@ -101,13 +105,13 @@ public class IoUringReadMultipleFiles implements AutoCloseable {
         close.invoke(fd);
     }
 
-    public void close(){
+    public void close() {
         liburingtest.io_uring_queue_exit(ring);
         arena.close();
     }
 
 
-    public MemorySegment see(MemorySegment ptr){
+    public MemorySegment see(MemorySegment ptr) {
         int ret;
         ret = liburingtest.io_uring_wait_cqe(ring, ptr);
         if (ret != 0) {
@@ -117,14 +121,13 @@ public class IoUringReadMultipleFiles implements AutoCloseable {
     }
 
 
-
-    public String getReadData(MemorySegment buff){
+    public String getReadData(MemorySegment buff) {
         // Get the user data that was set earlier to match requests
         return buff.getString(0);
     }
 
 
-    public void seen(MemorySegment cqePtr){
+    public void seen(MemorySegment cqePtr) {
         liburingtest.io_uring_cqe_seen(ring, cqePtr);
     }
 

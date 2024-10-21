@@ -12,7 +12,7 @@ public class FdGetter {
             pathsArray.setAtIndex(ValueLayout.ADDRESS, i, arena.allocateFrom(filePaths[i]));
         }
 
-        MemorySegment fdPointer = ((MemorySegment) openFilesHandle.invoke(pathsArray, filePaths.length));
+        MemorySegment fdPointer = (MemorySegment) openFilesHandle.invoke(pathsArray, filePaths.length);
 
         return new FdData( fdPointer);
     }

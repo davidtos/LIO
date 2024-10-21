@@ -24,6 +24,7 @@ public class UringExecutionPlan {
     String[] files;
     MethodHandle openFiles;
     MethodHandle closeFiles;
+    MethodHandle queue_prepped;
     MemorySegment pathsArray;
 
     @Setup
@@ -52,6 +53,11 @@ public class UringExecutionPlan {
         closeFiles = Linker.nativeLinker().downcallHandle(
                 SYMBOL_LOOKUP.find("close_files").orElseThrow(),
                 FunctionDescriptor.ofVoid(ValueLayout.JAVA_INT)
+        );
+
+        queue_prepped = Linker.nativeLinker().downcallHandle(
+                SYMBOL_LOOKUP.find("queue_prepped").orElseThrow(),
+                FunctionDescriptor.ofVoid(ValueLayout.ADDRESS,  ValueLayout.JAVA_INT, ValueLayout.ADDRESS, ValueLayout.JAVA_INT, ValueLayout.JAVA_LONG)
         );
 
 
