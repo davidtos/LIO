@@ -13,7 +13,6 @@ import static java.lang.foreign.ValueLayout.*;
 public class IoUringReadMultipleFiles implements AutoCloseable {
 
 
-
     public final Arena arena;
     private final MemorySegment ring;
     MethodHandle open;
@@ -49,6 +48,7 @@ public class IoUringReadMultipleFiles implements AutoCloseable {
     }
 
 
+    // TODO: Perform these operations in C. - Saving 4 calls
     public void createReadRequest(MemorySegment buff, int fileSize, int fdPosition, long data){
         // Create read request, set the polling flag
         MemorySegment sqe = liburingtest.io_uring_get_sqe(ring);
@@ -85,7 +85,7 @@ public class IoUringReadMultipleFiles implements AutoCloseable {
         liburingtest.io_uring_register_files(ring, fds, fdSet.length);
     }
 
-    public void registerFds2(FileAtt[] fdSet, MemorySegment fds){
+    public void passFdDirectly(FileAtt[] fdSet, MemorySegment fds){
         // register the file descriptor
         liburingtest.io_uring_register_files(ring, fds, fdSet.length);
     }

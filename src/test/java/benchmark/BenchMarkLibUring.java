@@ -145,7 +145,6 @@ public class BenchMarkLibUring {
         FileAtt[] atts = new FileAtt[files.length];
         Map<Integer, FileAtt> attMap = new HashMap<>();
 
-
         FdData fdData = FdGetter.openFiles(files, uring.arena, plan.openFiles, plan.pathsArray);
 
         for (int i = 0; i < files.length; i++) {
@@ -154,11 +153,12 @@ public class BenchMarkLibUring {
             attMap.put(i, atts[i]);
         }
 
-        uring.registerFds2(atts, fdData.fdPointer());
+        uring.passFdDirectly(atts, fdData.fdPointer());
 
         uring.submit();
 
         for (int i = 0; i < atts.length; i++) {
+            // TODO: Move the following two lines to C, Saving 2 calls
             var pntr = uring.see(uring.arena.allocate(io_uring_cqe.layout()));
             long userData = liburingtest.io_uring_cqe_get_data(pntr).get(JAVA_LONG, 0);
 
