@@ -23,9 +23,8 @@ public class ExecutionPlan {
     public void setup() {
         List<String> strings = new ArrayList<>();
 
-        strings.add("./tmp_file");
-        for (int i = 1; i < 20; i++) {
-            strings.add("./tmp_file" + i);
+        for (int i = 0; i < 200; i++) {
+            strings.add("./TestFiles/tmp_file" + i);
         }
 
         files = strings.toArray(new String[0]);

@@ -7,7 +7,8 @@ import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.TearDown;
 
-import java.lang.foreign.MemorySegment;
+import java.lang.foreign.*;
+import java.lang.invoke.MethodHandle;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -21,14 +22,16 @@ public class UringExecutionPlan {
     MemorySegment fds;
     MemorySegment pntr;
     String[] files;
+    MethodHandle openFiles;
+    MethodHandle closeFiles;
+    MemorySegment pathsArray;
 
     @Setup
     public void setup() {
         List<String> strings = new ArrayList<>();
 
-        strings.add("./tmp_file");
-        for (int i = 1; i < 20; i++) {
-            strings.add("./tmp_file" + i);
+        for (int i = 0; i < 200; i++) {
+            strings.add("./TestFiles/tmp_file" + i);
         }
 
         files = strings.toArray(new String[0]);
@@ -37,6 +40,21 @@ public class UringExecutionPlan {
         fds = uring.arena.allocate(JAVA_INT, files.length);
         pntr = uring.arena.allocate(io_uring_cqe.layout());
         uring.submit();
+
+        pathsArray = uring.arena.allocate(ValueLayout.ADDRESS, files.length);
+        SymbolLookup SYMBOL_LOOKUP = SymbolLookup.libraryLookup("/home/david/IdeaProjects/C_project/libfilemanager.so", uring.arena);
+
+        openFiles = Linker.nativeLinker().downcallHandle(
+                SYMBOL_LOOKUP.find("open_files").orElseThrow(),
+                FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_INT)
+        );
+
+        closeFiles = Linker.nativeLinker().downcallHandle(
+                SYMBOL_LOOKUP.find("close_files").orElseThrow(),
+                FunctionDescriptor.ofVoid(ValueLayout.JAVA_INT)
+        );
+
+
     }
 
 

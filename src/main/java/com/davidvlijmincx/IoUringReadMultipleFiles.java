@@ -85,6 +85,11 @@ public class IoUringReadMultipleFiles implements AutoCloseable {
         liburingtest.io_uring_register_files(ring, fds, fdSet.length);
     }
 
+    public void registerFds2(FileAtt[] fdSet, MemorySegment fds){
+        // register the file descriptor
+        liburingtest.io_uring_register_files(ring, fds, fdSet.length);
+    }
+
     public int getFd(String path) throws Throwable {
         // Get file descriptor
         int mode = 0;

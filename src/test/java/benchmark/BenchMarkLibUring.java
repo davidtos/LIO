@@ -1,5 +1,7 @@
 package benchmark;
 
+import com.davidvlijmincx.FdGetter;
+import com.davidvlijmincx.FdData;
 import com.davidvlijmincx.FileAtt;
 import com.davidvlijmincx.generated.io.uring.io_uring_cqe;
 import com.davidvlijmincx.generated.io.uring.liburingtest;
@@ -46,8 +48,8 @@ public class BenchMarkLibUring {
             int length = (int) new File(path).length();
             BufferedReader in = new BufferedReader(
                     new InputStreamReader(
-                            new FileInputStream("./tmp_file"),
-                            "UTF-8"));
+                            new FileInputStream(path),
+                            StandardCharsets.UTF_8));
             char[] chars = new char[length + 4];
             in.read(chars, 0, length);
 
@@ -56,7 +58,6 @@ public class BenchMarkLibUring {
         }
 
     }
-
 
 
     @Benchmark()
@@ -76,7 +77,6 @@ public class BenchMarkLibUring {
             }
         }
     }
-
 
 
     @Benchmark()
@@ -123,9 +123,9 @@ public class BenchMarkLibUring {
             var pntr = uring.see(uring.arena.allocate(io_uring_cqe.layout()));
             long userData = liburingtest.io_uring_cqe_get_data(pntr).get(JAVA_LONG, 0);
 
-            blackhole.consume(attMap.get((int)userData).buffer.getString(0));
+            blackhole.consume(attMap.get((int) userData).buffer.getString(0));
 
-            uring.closeFd(attMap.get((int)userData).fd);
+            uring.closeFd(attMap.get((int) userData).fd);
             uring.seen(pntr);
 
         }
@@ -133,4 +133,45 @@ public class BenchMarkLibUring {
 
     }
 
+
+    @Benchmark()
+    @BenchmarkMode(Mode.AverageTime)
+    @OutputTimeUnit(TimeUnit.MILLISECONDS)
+    public void ReadUsingLiburingWithFileDescriptorWrapper(UringExecutionPlan plan, Blackhole blackhole) throws Throwable {
+
+        var files = plan.files;
+        var uring = plan.uring;
+
+        FileAtt[] atts = new FileAtt[files.length];
+        Map<Integer, FileAtt> attMap = new HashMap<>();
+
+
+        FdData fdData = FdGetter.openFiles(files, uring.arena, plan.openFiles, plan.pathsArray);
+
+        for (int i = 0; i < files.length; i++) {
+            atts[i] = new FileAtt(files[i], 0, i, uring.arena);
+            uring.createReadRequest(atts[i].buffer, atts[i].fileSize, i, atts[i].user_data);
+            attMap.put(i, atts[i]);
+        }
+
+        uring.registerFds2(atts, fdData.fdPointer());
+
+        uring.submit();
+
+        for (int i = 0; i < atts.length; i++) {
+            var pntr = uring.see(uring.arena.allocate(io_uring_cqe.layout()));
+            long userData = liburingtest.io_uring_cqe_get_data(pntr).get(JAVA_LONG, 0);
+
+            blackhole.consume(attMap.get((int) userData).buffer.getString(0));
+
+            uring.seen(pntr);
+
+        }
+
+        FdGetter.closeFiles(files, plan.closeFiles);
+
+    }
+
+
 }
+
