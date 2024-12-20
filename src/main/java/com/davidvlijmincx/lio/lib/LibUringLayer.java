@@ -18,12 +18,10 @@ class LibUringLayer implements AutoCloseable {
     private static final MethodHandle open;
     private static final MethodHandle malloc;
     private static final MethodHandle free;
-  //  private static final MethodHandle seeAndClose;
     private static final MethodHandle close;
-//    private static final MethodHandle read_with_offset_buffer;
 
     static {
-        // SymbolLookup symbolLookup = SymbolLookup.libraryLookup("/home/david/IdeaProjects/C_project/libfilemanager.so", Arena.global());
+
 
         Linker linker = Linker.nativeLinker();
         SymbolLookup defaultedLookup = linker.defaultLookup();
@@ -47,16 +45,6 @@ class LibUringLayer implements AutoCloseable {
                 defaultedLookup.find("close").orElseThrow(),
                 FunctionDescriptor.ofVoid(JAVA_INT)
         );
-
-//        seeAndClose = Linker.nativeLinker().downcallHandle(
-//                symbolLookup.find("see_and_close").orElseThrow(),
-//                FunctionDescriptor.of(JAVA_INT, ValueLayout.ADDRESS)
-//        );
-//
-//        read_with_offset_buffer = Linker.nativeLinker().downcallHandle(
-//                symbolLookup.find("read_with_offset_buffer").orElseThrow(),
-//                FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, JAVA_INT, ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, JAVA_INT)
-//        );
 
     }
 
@@ -132,12 +120,6 @@ class LibUringLayer implements AutoCloseable {
         liburingtest.io_uring_prep_read(sqe, fd, buff, bufferSize, offset);
         liburingtest.io_uring_sqe_set_data_long(sqe, userData);
         return buff;
-
-//        try {
-//            return ((MemorySegment) read_with_offset_buffer.invokeExact(ring, fd, bufferSize, userData, offset)).reinterpret(bufferSize);
-//        } catch (Throwable e) {
-//            throw new RuntimeException(e);
-//        }
     }
 
     void prepareWriteRequest(long userData, int fd, MemorySegment bufPtr, int offset) {
@@ -161,13 +143,6 @@ class LibUringLayer implements AutoCloseable {
         long user_data = liburingtest.io_uring_cqe_get_data(cqe).get(JAVA_LONG, 0);
         liburingtest.io_uring_cqe_seen(ring, cqe);
         return (int) user_data;
-
-
-//        try {
-//            return (int) seeAndClose.invokeExact(ring);
-//        } catch (Throwable e) {
-//            throw new RuntimeException(e);
-//        }
     }
 
     @Override
